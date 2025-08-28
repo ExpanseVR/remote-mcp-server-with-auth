@@ -23,6 +23,17 @@ const GetIdeaSchema = z.object({
 
 type CreateIdeaParams = z.infer<typeof CreateIdeaSchema>;
 type ListIdeasParams = z.infer<typeof ListIdeasSchema>;
+type GetIdeaParams = z.infer<typeof GetIdeaSchema>;
+
+const UpdateIdeaSchema = CreateIdeaSchema.partial().extend({
+  id: z.number().int().nonnegative().describe("Idea ID to update"),
+});
+type UpdateIdeaParams = z.infer<typeof UpdateIdeaSchema>;
+
+const DeleteIdeaSchema = z.object({
+  id: z.number().int().nonnegative().describe("Idea ID to delete"),
+});
+type DeleteIdeaParams = z.infer<typeof DeleteIdeaSchema>;
 
 // Tool registration function
 export function registerIdeaTools(server: McpServer, env: any, props: Props) {
@@ -82,6 +93,78 @@ export function registerIdeaTools(server: McpServer, env: any, props: Props) {
           text: `Error listing ideas: ${message}`
         }]
       };
+    }
+  });
+
+  server.tool("get_idea", "Get a specific idea", GetIdeaSchema.shape, async (params: GetIdeaParams) => {
+    try {
+      const response = await fetch(`${env.API_BASE_URL}/v1/ideas/${params.id}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${env.API_KEY}`
+        }
+      });
+      const idea = await response.json() as any;
+      return {
+        content: [{
+          type: "text",
+          text: `Idea details:\n\n${JSON.stringify(idea, null, 2)}`
+        }]
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { content: [{ type: "text", text: `Error getting idea: ${message}` }] };
+    }
+  });
+
+  server.tool("update_idea", "Update an idea", UpdateIdeaSchema.shape, async (params: UpdateIdeaParams) => {
+    try {
+      const { id, ...body } = params;
+      const response = await fetch(`${env.API_BASE_URL}/v1/ideas/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.API_KEY}`
+        },
+        body: JSON.stringify(body)
+      });
+      const updated = await response.json() as any;
+      return {
+        content: [{
+          type: "text",
+          text: `Idea updated:\n\n${JSON.stringify(updated, null, 2)}`
+        }]
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { content: [{ type: "text", text: `Error updating idea: ${message}` }] };
+    }
+  });
+
+  server.tool("delete_idea", "Delete an idea", DeleteIdeaSchema.shape, async (params: DeleteIdeaParams) => {
+    try {
+      const response = await fetch(`${env.API_BASE_URL}/v1/ideas/${params.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${env.API_KEY}`
+        }
+      });
+      let result: unknown;
+      try {
+        result = await response.json();
+      } catch {
+        result = {} as Record<string, unknown>;
+      }
+      const hasBody = typeof result === 'object' && result !== null && Object.keys(result as Record<string, unknown>).length > 0;
+      return {
+        content: [{
+          type: "text",
+          text: `Idea ${params.id} deleted${hasBody ? `:\n\n${JSON.stringify(result, null, 2)}` : ''}`
+        }]
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { content: [{ type: "text", text: `Error deleting idea: ${message}` }] };
     }
   });
 
