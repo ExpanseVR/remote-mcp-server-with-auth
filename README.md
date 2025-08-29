@@ -1,14 +1,13 @@
-# Cloudflare Remote PostgreSQL Database MCP Server + GitHub OAuth
+# Cloudflare Remote MCP Server + GitHub OAuth
 
-This is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) server that enables you to **chat with your PostgreSQL database**, deployable as a remote MCP server with GitHub OAuth through Cloudflare. This is production ready MCP.
+This is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) server deployable as a remote MCP server with GitHub OAuth through Cloudflare. It exposes tools that interact with an external Idea service over HTTP.
 
 ## Key Features
 
-- **🗄️ Database Integration with Lifespan**: Direct PostgreSQL database connection for all MCP tool calls
 - **🛠️ Modular, Single Purpose Tools**: Following best practices around MCP tools and their descriptions
-- **🔐 Role-Based Access**: GitHub username-based permissions for database write operations
-- **📊 Schema Discovery**: Automatic table and column information retrieval
-- **🛡️ SQL Injection Protection**: Built-in validation and sanitization
+- **🔐 OAuth-based Access**: GitHub OAuth protects the MCP endpoints
+- **🧩 External API Integration**: Tools call an Idea service over HTTPS
+- **🧪 Zod Validation**: Strong runtime validation with TypeScript inference
 - **📈 Monitoring**: Optional Sentry integration for production monitoring
 - **☁️ Cloud Native**: Powered by [Cloudflare Workers](https://developers.cloudflare.com/workers/) for global scale
 
@@ -17,10 +16,10 @@ This is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introdu
 This MCP server uses a clean, modular architecture that makes it easy to extend and maintain:
 
 - **`src/tools/`** - Individual tool implementations in separate files
-- **`registerAllTools()`** - Centralized tool registration system 
+- **`registerAllTools()`** - Centralized tool registration system
 - **Extensible Design** - Add new tools by creating files in `tools/` and registering them
 
-This architecture allows you to easily add new database operations, external API integrations, or any other MCP tools while keeping the codebase organized and maintainable.
+This architecture allows you to easily add new external API integrations or any other MCP tools while keeping the codebase organized and maintainable.
 
 ## Transport Protocols
 
@@ -33,15 +32,18 @@ For new implementations, use the `/mcp` endpoint as it provides better performan
 
 ## How It Works
 
-The MCP server provides three main tools for database interaction:
+The MCP server provides tools to interact with an external Idea service:
 
-1. **`listTables`** - Get database schema and table information (all authenticated users)
-2. **`queryDatabase`** - Execute read-only SQL queries (all authenticated users)  
-3. **`executeDatabase`** - Execute write operations like INSERT/UPDATE/DELETE (privileged users only)
+1. **`create_idea`** - Create a new idea
+2. **`list_ideas`** - List ideas for a user
+3. **`get_idea`** - Get a specific idea
+4. **`update_idea`** - Update an idea
+5. **`delete_idea`** - Delete an idea
 
 **Authentication Flow**: Users authenticate via GitHub OAuth → Server validates permissions → Tools become available based on user's GitHub username.
 
-**Security Model**: 
+**Security Model**:
+
 - All authenticated GitHub users can read data
 - Only specific GitHub usernames can write/modify data
 - SQL injection protection and query validation built-in
@@ -55,7 +57,6 @@ Want to see a basic MCP server before diving into the full database implementati
 - Node.js installed on your machine
 - A Cloudflare account (free tier works)
 - A GitHub account for OAuth setup
-- A PostgreSQL database (local or hosted)
 
 ## Getting Started
 
@@ -83,24 +84,27 @@ Clone the repo directly & install dependencies: `npm install`.
 
 ## Environment Variables Setup
 
-Before running the MCP server, you need to configure several environment variables for authentication and database access.
+Before running the MCP server, configure environment variables for authentication and the Idea API.
 
 ### Create Environment Variables File
 
 1. **Create your `.dev.vars` file** from the example:
+
    ```bash
    cp .dev.vars.example .dev.vars
    ```
 
 2. **Configure all required environment variables** in `.dev.vars`:
+
    ```
    # GitHub OAuth (for authentication)
    GITHUB_CLIENT_ID=your_github_client_id
    GITHUB_CLIENT_SECRET=your_github_client_secret
    COOKIE_ENCRYPTION_KEY=your_random_encryption_key
 
-   # Database Connection
-   DATABASE_URL=postgresql://username:password@localhost:5432/database_name
+   # Idea API
+   API_BASE_URL=https://your-idea-service.example.com
+   API_KEY=your_api_key
 
    # Optional: Sentry monitoring
    SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
@@ -124,49 +128,39 @@ Before running the MCP server, you need to configure several environment variabl
 ### Generate Encryption Key
 
 Generate a secure random encryption key for cookie encryption:
+
 ```bash
 openssl rand -hex 32
 ```
+
 Copy the output and paste it as `COOKIE_ENCRYPTION_KEY` in `.dev.vars`.
 
-## Database Setup
+## Idea API
 
-1. **Set up PostgreSQL** using a hosted service like:
-   - [Supabase](https://supabase.com/) (recommended for beginners)
-   - [Neon](https://neon.tech/)
-   - Or use local PostgreSQL/Supabase
+Configure your Idea service and credentials so the tools can call it. Typical endpoints:
 
-2. **Update the DATABASE_URL** in `.dev.vars` with your connection string:
-   ```
-   DATABASE_URL=postgresql://username:password@host:5432/database_name
-   ```
-
-#### Connection String Examples:
-- **Local**: `postgresql://myuser:mypass@localhost:5432/mydb`
-- **Supabase**: `postgresql://postgres:your-password@db.your-project.supabase.co:5432/postgres`
-
-### Database Schema Setup
-
-The MCP server works with any PostgreSQL database schema. It will automatically discover:
-- All tables in the `public` schema
-- Column names, types, and constraints
-- Primary keys and indexes
-
-**Testing the Connection**: Once you have your database set up, you can test it by asking the MCP server "What tables are available in the database?" and then querying those tables to explore your data.
+- `POST /v1/ideas` (create)
+- `GET /v1/ideas?user_id={id}` (list)
+- `GET /v1/ideas/:id` (get)
+- `PUT /v1/ideas/:id` (update)
+- `DELETE /v1/ideas/:id` (delete)
 
 ## Local Development & Testing
 
 **Run the server locally**:
-   ```bash
-   wrangler dev
-   ```
-   This makes the server available at `http://localhost:8792`
+
+```bash
+wrangler dev
+```
+
+This makes the server available at `http://localhost:8792`
 
 ### Testing with MCP Inspector
 
 Use the [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector) to test your server:
 
 1. **Install and run Inspector**:
+
    ```bash
    npx @modelcontextprotocol/inspector@latest
    ```
@@ -179,18 +173,20 @@ Use the [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector) to
    - Once connected, you'll see the available tools
 
 3. **Test the tools**:
-   - Use `listTables` to see your database structure
-   - Use `queryDatabase` to run SELECT queries
-   - Use `executeDatabase` (if you have write access) for INSERT/UPDATE/DELETE operations
+   - Use `create_idea` to create a new idea
+   - Use `list_ideas` to list ideas for a user
+   - Use `get_idea`, `update_idea`, `delete_idea` for single-idea operations
 
 ## Production Deployment
 
 #### Set up a KV namespace
-- Create the KV namespace: 
-`wrangler kv namespace create "OAUTH_KV"`
+
+- Create the KV namespace:
+  `wrangler kv namespace create "OAUTH_KV"`
 - Update the `wrangler.jsonc` file with the KV ID (replace <Add-KV-ID>)
 
 #### Deploy
+
 Deploy the MCP server to make it available on your workers.dev domain
 
 ```bash
@@ -198,110 +194,66 @@ wrangler deploy
 ```
 
 ### Create environment variables in production
-Create a new [GitHub OAuth App](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app): 
+
+Create a new [GitHub OAuth App](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app):
+
 - For the Homepage URL, specify `https://mcp-github-oauth.<your-subdomain>.workers.dev`
 - For the Authorization callback URL, specify `https://mcp-github-oauth.<your-subdomain>.workers.dev/callback`
-- Note your Client ID and generate a Client secret. 
+- Note your Client ID and generate a Client secret.
 - Set all required secrets via Wrangler:
+
 ```bash
 wrangler secret put GITHUB_CLIENT_ID
 wrangler secret put GITHUB_CLIENT_SECRET
 wrangler secret put COOKIE_ENCRYPTION_KEY  # use: openssl rand -hex 32
-wrangler secret put DATABASE_URL
+wrangler secret put API_BASE_URL
+wrangler secret put API_KEY
 wrangler secret put SENTRY_DSN  # optional (more on Sentry setup below)
 ```
 
 #### Test
 
-Test the remote server using [Inspector](https://modelcontextprotocol.io/docs/tools/inspector): 
+Test the remote server using [Inspector](https://modelcontextprotocol.io/docs/tools/inspector):
 
 ```
 npx @modelcontextprotocol/inspector@latest
 ```
-Enter `https://mcp-github-oauth.<your-subdomain>.workers.dev/mcp` (preferred) or `https://mcp-github-oauth.<your-subdomain>.workers.dev/sse` (legacy) and hit connect. Once you go through the authentication flow, you'll see the Tools working: 
+
+Enter `https://mcp-github-oauth.<your-subdomain>.workers.dev/mcp` (preferred) or `https://mcp-github-oauth.<your-subdomain>.workers.dev/sse` (legacy) and hit connect. Once you go through the authentication flow, you'll see the Tools working:
 
 <img width="640" alt="image" src="https://github.com/user-attachments/assets/7973f392-0a9d-4712-b679-6dd23f824287" />
 
-You now have a remote MCP server deployed! 
+You now have a remote MCP server deployed!
 
-## Database Tools & Access Control
+## Idea Tools
 
 ### Available Tools
 
-#### 1. `listTables` (All Users)
-**Purpose**: Discover database schema and structure  
-**Access**: All authenticated GitHub users  
-**Usage**: Always run this first to understand your database structure
+#### 1. `create_idea`
 
-```
-Example output:
-- Tables: users, products, orders
-- Columns: id (integer), name (varchar), created_at (timestamp)
-- Constraints and relationships
-```
+Create a new idea with title, user_id, description, status, category, and priority.
 
-#### 2. `queryDatabase` (All Users) 
-**Purpose**: Execute read-only SQL queries  
-**Access**: All authenticated GitHub users  
-**Restrictions**: Only SELECT statements and read operations allowed
+#### 2. `list_ideas`
 
-```sql
--- Examples of allowed queries:
-SELECT * FROM users WHERE created_at > '2024-01-01';
-SELECT COUNT(*) FROM products;
-SELECT u.name, o.total FROM users u JOIN orders o ON u.id = o.user_id;
-```
+List ideas for a specific user by `user_id`.
 
-#### 3. `executeDatabase` (Privileged Users Only)
-**Purpose**: Execute write operations (INSERT, UPDATE, DELETE, DDL)  
-**Access**: Restricted to specific GitHub usernames  
-**Capabilities**: Full database write access including schema modifications
+#### 3. `get_idea`
 
-```sql
--- Examples of allowed operations:
-INSERT INTO users (name, email) VALUES ('New User', 'user@example.com');
-UPDATE products SET price = 29.99 WHERE id = 1;
-DELETE FROM orders WHERE status = 'cancelled';
-CREATE TABLE new_table (id SERIAL PRIMARY KEY, data TEXT);
-```
+Fetch a single idea by `id`.
 
-### Access Control Configuration
+#### 4. `update_idea`
 
-Database write access is controlled by GitHub username in the `ALLOWED_USERNAMES` configuration:
+Update fields of an existing idea by `id`.
 
-```typescript
-// Add GitHub usernames for database write access
-const ALLOWED_USERNAMES = new Set([
-  'yourusername',    // Replace with your GitHub username
-  'teammate1',       // Add team members who need write access
-  'database-admin'   // Add other trusted users
-]);
-```
+#### 5. `delete_idea`
 
-**To update access permissions**:
-1. Edit `src/index.ts` and `src/index_non_sentry.ts`
-2. Update the `ALLOWED_USERNAMES` set with GitHub usernames
-3. Redeploy the worker: `wrangler deploy`
-
-### Typical Workflow
-
-1. **🔍 Discover**: Use `listTables` to understand database structure
-2. **📊 Query**: Use `queryDatabase` to read and analyze data  
-3. **✏️ Modify**: Use `executeDatabase` (if you have write access) to make changes
-
-### Security Features
-
-- **SQL Injection Protection**: All queries are validated before execution
-- **Operation Type Detection**: Automatic detection of read vs write operations
-- **User Context Tracking**: All operations are logged with GitHub user information
-- **Connection Pooling**: Efficient database connection management
-- **Error Sanitization**: Database errors are cleaned before being returned to users
+Delete an idea by `id`.
 
 ### Access the remote MCP server from Claude Desktop
 
 Open Claude Desktop and navigate to Settings -> Developer -> Edit Config. This opens the configuration file that controls which MCP servers Claude can access.
 
-Replace the content with the following configuration. Once you restart Claude Desktop, a browser window will open showing your OAuth login page. Complete the authentication flow to grant Claude access to your MCP server. After you grant access, the tools will become available for you to use. 
+Replace the content with the following configuration. Once you restart Claude Desktop, a browser window will open showing your OAuth login page. Complete the authentication flow to grant Claude access to your MCP server. After you grant access, the tools will become available for you to use.
 
 ```
 {
@@ -317,11 +269,11 @@ Replace the content with the following configuration. Once you restart Claude De
 }
 ```
 
-Once the Tools (under 🔨) show up in the interface, you can ask Claude to interact with your database. Example commands:
+Once the Tools (under 🔨) show up in the interface, you can ask Claude to interact with your Idea API. Example commands:
 
-- **"What tables are available in the database?"** → Uses `listTables` tool
-- **"Show me all users created in the last 30 days"** → Uses `queryDatabase` tool  
-- **"Add a new user named John with email john@example.com"** → Uses `executeDatabase` tool (if you have write access)
+- **"Create an idea titled 'New Feature' for user 42"** → Uses `create_idea`
+- **"List ideas for user 42"** → Uses `list_ideas`
+- **"Get idea 123 and update its status to InProgress"** → Uses `get_idea` / `update_idea`
 
 ### Using Claude and other MCP Clients
 
@@ -355,12 +307,15 @@ This project includes optional Sentry integration for comprehensive error tracki
 To deploy with Sentry monitoring:
 
 1. **Set the Sentry DSN secret**:
+
    ```bash
    wrangler secret put SENTRY_DSN
    ```
+
    Enter your Sentry DSN when prompted.
 
 2. **Update your wrangler.toml** to use the Sentry-enabled version:
+
    ```toml
    main = "src/index_sentry.ts"
    ```
@@ -373,6 +328,7 @@ To deploy with Sentry monitoring:
 ### Using Sentry in Development
 
 1. **Add Sentry DSN to your `.dev.vars` file**:
+
    ```
    SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
    NODE_ENV=development
@@ -392,9 +348,10 @@ To deploy with Sentry monitoring:
 - **Custom Error Handling**: User-friendly error messages with Event IDs
 - **Context Enrichment**: Automatic tagging and context for better debugging
 
-## How does it work? 
+## How does it work?
 
 #### OAuth Provider
+
 The OAuth Provider library serves as a complete OAuth 2.1 server implementation for Cloudflare Workers. It handles the complexities of the OAuth flow, including token issuance, validation, and management. In this project, it plays the dual role of:
 
 - Authenticating MCP clients that connect to your server
@@ -402,14 +359,18 @@ The OAuth Provider library serves as a complete OAuth 2.1 server implementation 
 - Securely storing tokens and authentication state in KV storage
 
 #### Durable MCP
+
 Durable MCP extends the base MCP functionality with Cloudflare's Durable Objects, providing:
+
 - Persistent state management for your MCP server
 - Secure storage of authentication context between requests
 - Access to authenticated user information via `this.props`
 - Support for conditional tool availability based on user identity
 
 #### MCP Remote
+
 The MCP Remote library enables your server to expose tools that can be invoked by MCP clients like the Inspector. It:
+
 - Defines the protocol for communication between clients and your server
 - Provides a structured way to define tools
 - Handles serialization and deserialization of requests and responses
@@ -417,11 +378,11 @@ The MCP Remote library enables your server to expose tools that can be invoked b
 
 ## Testing
 
-This project includes comprehensive unit tests covering all major functionality:
+This project includes unit tests covering core functionality:
 
 ```bash
 npm test        # Run all tests
 npm run test:ui # Run tests with UI
 ```
 
-The test suite covers database security, tool registration, permission handling, and response formatting with proper mocking of external dependencies.
+The test suite covers tool registration, response formatting, and proper mocking of external dependencies (including the Idea API via `fetch`).

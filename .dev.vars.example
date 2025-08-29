@@ -2,6 +2,10 @@ GITHUB_CLIENT_ID=<your github client id>
 GITHUB_CLIENT_SECRET=<your github client secret>
 COOKIE_ENCRYPTION_KEY=<your cookie cookie encryption key>
 
+# Idea API
+API_BASE_URL=<https://your-idea-service.example.com>
+API_KEY=<your idea api key>
+
 # Optional: Add Sentry DSN for local development monitoring
 # Get your DSN from https://sentry.io/settings/projects/your-project/keys/
 # Create a new project in Sentry, then for the platform pick Cloudflare Workers (search in the top right)
