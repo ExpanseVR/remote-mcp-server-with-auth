@@ -38,19 +38,26 @@ type DeleteIdeaParams = z.infer<typeof DeleteIdeaSchema>;
 // Tool registration function
 export function registerIdeaTools(server: McpServer, env: any, props: Props) {
   
-  server.tool("create_idea", "Create a new idea", CreateIdeaSchema.shape, async (params: CreateIdeaParams) => {
+  server.tool(
+    "create_idea", 
+    "Create a new idea entry. Requires title (string), description (string), and user_id (number). Returns the newly created idea with its assigned ID and timestamp.", 
+    CreateIdeaSchema.shape, 
+    async (params: CreateIdeaParams) => {
     try {
       const response = await fetch(`${env.API_BASE_URL}/v1/ideas`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${env.API_KEY}`
+          // 'Authorization': `Bearer ${env.API_KEY}`
         },
         body: JSON.stringify(params)
       });
       
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const result = await response.json() as any;
-
       return createSuccessResponse('Idea created successfully:', result);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -58,14 +65,22 @@ export function registerIdeaTools(server: McpServer, env: any, props: Props) {
     }
   });
 
-  server.tool("list_ideas", "List ideas for a user", ListIdeasSchema.shape, async (params: ListIdeasParams) => {
+  server.tool(
+    "list_ideas",
+    "List all ideas for a specific user. Requires user_id parameter. Returns array of user's ideas.",
+    ListIdeasSchema.shape,
+    async (params: ListIdeasParams) => {
     try {
       const response = await fetch(`${env.API_BASE_URL}/v1/ideas?user_id=${params.user_id}`, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${env.API_KEY}`
-        }
+        //headers: {
+          // 'Authorization': `Bearer ${env.API_KEY}`
+        //}
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
       
       const ideas = await response.json() as any[];
 
@@ -76,14 +91,23 @@ export function registerIdeaTools(server: McpServer, env: any, props: Props) {
     }
   });
 
-  server.tool("get_idea", "Get a specific idea", GetIdeaSchema.shape, async (params: GetIdeaParams) => {
+  server.tool(
+    "get_idea", 
+    "Retrieve a specific idea by its ID. Returns full idea details including title, description, and metadata.", 
+    GetIdeaSchema.shape, 
+    async (params: GetIdeaParams) => {
     try {
       const response = await fetch(`${env.API_BASE_URL}/v1/ideas/${params.id}`, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${env.API_KEY}`
-        }
+        //headers: {
+          // 'Authorization': `Bearer ${env.API_KEY}`
+        //}
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
       const idea = await response.json() as any;
       return createSuccessResponse('Idea details:', idea);
     } catch (error) {
@@ -92,17 +116,26 @@ export function registerIdeaTools(server: McpServer, env: any, props: Props) {
     }
   });
 
-  server.tool("update_idea", "Update an idea", UpdateIdeaSchema.shape, async (params: UpdateIdeaParams) => {
+  server.tool(
+    "update_idea", 
+    "Update an idea. Requires id parameter and any number of fields to update. Returns the updated idea details.", 
+    UpdateIdeaSchema.shape, 
+    async (params: UpdateIdeaParams) => {
     try {
       const { id, ...body } = params;
       const response = await fetch(`${env.API_BASE_URL}/v1/ideas/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${env.API_KEY}`
+          //'Authorization': `Bearer ${env.API_KEY}`
         },
         body: JSON.stringify(body)
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
       const updated = await response.json() as any;
       return createSuccessResponse('Idea updated:', updated);
     } catch (error) {
@@ -111,13 +144,17 @@ export function registerIdeaTools(server: McpServer, env: any, props: Props) {
     }
   });
 
-  server.tool("delete_idea", "Delete an idea", DeleteIdeaSchema.shape, async (params: DeleteIdeaParams) => {
+  server.tool(
+    "delete_idea", 
+    "Delete an idea. Requires id parameter. Returns success message if idea was deleted. This action is irreversible.", 
+    DeleteIdeaSchema.shape, 
+    async (params: DeleteIdeaParams) => {
     try {
       const response = await fetch(`${env.API_BASE_URL}/v1/ideas/${params.id}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${env.API_KEY}`
-        }
+        //headers: {
+          //'Authorization': `Bearer ${env.API_KEY}`
+        //}
       });
       let result: unknown;
       try {
@@ -125,6 +162,11 @@ export function registerIdeaTools(server: McpServer, env: any, props: Props) {
       } catch {
         result = {} as Record<string, unknown>;
       }
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
       const hasBody = typeof result === 'object' && result !== null && Object.keys(result as Record<string, unknown>).length > 0;
       return hasBody
         ? createSuccessResponse(`Idea ${params.id} deleted:`, result)
@@ -134,6 +176,4 @@ export function registerIdeaTools(server: McpServer, env: any, props: Props) {
       return createErrorResponse('Error deleting idea', message);
     }
   });
-
-  // Add get_idea, update_idea, delete_idea tools...
 }
