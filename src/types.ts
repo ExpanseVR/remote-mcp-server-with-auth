@@ -71,13 +71,19 @@ export const ExecuteDatabaseSchema = {
 
 // MCP response types
 export interface McpTextContent {
+  [x: string]: unknown;
   type: "text";
   text: string;
+  _meta?: { [x: string]: unknown };
   isError?: boolean;
 }
 
 export interface McpResponse {
+  [x: string]: unknown;
   content: McpTextContent[];
+  _meta?: { [x: string]: unknown };
+  structuredContent?: { [x: string]: unknown };
+  isError?: boolean;
 }
 
 // Standard response creators

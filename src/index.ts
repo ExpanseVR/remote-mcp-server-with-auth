@@ -3,7 +3,6 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { McpAgent } from "agents/mcp";
 import { Props } from "./types";
 import { GitHubHandler } from "./auth/github-handler";
-import { closeDb } from "./database/connection";
 import { registerAllTools } from "./tools/register-tools";
 
 export class MyMCP extends McpAgent<Env, Record<string, never>, Props> {
@@ -11,25 +10,6 @@ export class MyMCP extends McpAgent<Env, Record<string, never>, Props> {
 		name: "PostgreSQL Database MCP Server",
 		version: "1.0.0",
 	});
-
-	/**
-	 * Cleanup database connections when Durable Object is shutting down
-	 */
-	async cleanup(): Promise<void> {
-		try {
-			await closeDb();
-			console.log('Database connections closed successfully');
-		} catch (error) {
-			console.error('Error during database cleanup:', error);
-		}
-	}
-
-	/**
-	 * Durable Objects alarm handler - used for cleanup
-	 */
-	async alarm(): Promise<void> {
-		await this.cleanup();
-	}
 
 	async init() {
 		// Register all tools based on user permissions

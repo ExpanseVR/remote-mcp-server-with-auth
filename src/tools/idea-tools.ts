@@ -1,7 +1,7 @@
 // src/tools/idea-tools.ts
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from 'zod';
-import { Props } from '../types';
+import { Props, createSuccessResponse, createErrorResponse } from '../types';
 
 // Schemas for your tools
 const CreateIdeaSchema = z.object({
@@ -50,21 +50,11 @@ export function registerIdeaTools(server: McpServer, env: any, props: Props) {
       });
       
       const result = await response.json() as any;
-      
-      return {
-        content: [{
-          type: "text",
-          text: `Idea created successfully: ${JSON.stringify(result, null, 2)}`
-        }]
-      };
+
+      return createSuccessResponse('Idea created successfully:', result);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      return {
-        content: [{
-          type: "text",
-          text: `Error creating idea: ${message}`
-        }]
-      };
+      return createErrorResponse('Error creating idea', message);
     }
   });
 
@@ -78,21 +68,11 @@ export function registerIdeaTools(server: McpServer, env: any, props: Props) {
       });
       
       const ideas = await response.json() as any[];
-      
-      return {
-        content: [{
-          type: "text", 
-          text: `Found ${ideas.length} ideas:\n\n${JSON.stringify(ideas, null, 2)}`
-        }]
-      };
+
+      return createSuccessResponse(`Found ${ideas.length} ideas:`, ideas);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      return {
-        content: [{
-          type: "text",
-          text: `Error listing ideas: ${message}`
-        }]
-      };
+      return createErrorResponse('Error listing ideas', message);
     }
   });
 
@@ -105,15 +85,10 @@ export function registerIdeaTools(server: McpServer, env: any, props: Props) {
         }
       });
       const idea = await response.json() as any;
-      return {
-        content: [{
-          type: "text",
-          text: `Idea details:\n\n${JSON.stringify(idea, null, 2)}`
-        }]
-      };
+      return createSuccessResponse('Idea details:', idea);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      return { content: [{ type: "text", text: `Error getting idea: ${message}` }] };
+      return createErrorResponse('Error getting idea', message);
     }
   });
 
@@ -129,15 +104,10 @@ export function registerIdeaTools(server: McpServer, env: any, props: Props) {
         body: JSON.stringify(body)
       });
       const updated = await response.json() as any;
-      return {
-        content: [{
-          type: "text",
-          text: `Idea updated:\n\n${JSON.stringify(updated, null, 2)}`
-        }]
-      };
+      return createSuccessResponse('Idea updated:', updated);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      return { content: [{ type: "text", text: `Error updating idea: ${message}` }] };
+      return createErrorResponse('Error updating idea', message);
     }
   });
 
@@ -156,15 +126,12 @@ export function registerIdeaTools(server: McpServer, env: any, props: Props) {
         result = {} as Record<string, unknown>;
       }
       const hasBody = typeof result === 'object' && result !== null && Object.keys(result as Record<string, unknown>).length > 0;
-      return {
-        content: [{
-          type: "text",
-          text: `Idea ${params.id} deleted${hasBody ? `:\n\n${JSON.stringify(result, null, 2)}` : ''}`
-        }]
-      };
+      return hasBody
+        ? createSuccessResponse(`Idea ${params.id} deleted:`, result)
+        : createSuccessResponse(`Idea ${params.id} deleted`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      return { content: [{ type: "text", text: `Error deleting idea: ${message}` }] };
+      return createErrorResponse('Error deleting idea', message);
     }
   });
 
